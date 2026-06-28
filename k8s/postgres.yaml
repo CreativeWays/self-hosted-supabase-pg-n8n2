@@ -26,6 +26,7 @@ data:
     -- pg_graphql: GraphQL API layer.
     -- pgaudit  : Audit logging (preloaded via shared_preload_libraries).
     -- pg_tle   : Trusted language extensions.
+    CREATE SCHEMA IF NOT EXISTS graphql;
     CREATE EXTENSION IF NOT EXISTS "pgsodium";
     CREATE EXTENSION IF NOT EXISTS "pgjwt"         WITH SCHEMA extensions;
     CREATE EXTENSION IF NOT EXISTS "pg_graphql"    WITH SCHEMA graphql;
