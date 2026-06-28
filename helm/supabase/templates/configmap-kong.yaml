@@ -1,0 +1,436 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "supabase.name" . }}-kong
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+data:
+  kong.yml: |
+    _format_version: '2.1'
+    _transform: true
+    
+    ###
+    ### Consumers / Users
+    ###
+    consumers:
+      - username: DASHBOARD
+      - username: anon
+        keyauth_credentials:
+          - key: $SUPABASE_ANON_KEY
+          - key: $SUPABASE_PUBLISHABLE_KEY
+      - username: service_role
+        keyauth_credentials:
+          - key: $SUPABASE_SERVICE_KEY
+          - key: $SUPABASE_SECRET_KEY
+    
+    ###
+    ### Access Control List
+    ###
+    acls:
+      - consumer: anon
+        group: anon
+      - consumer: service_role
+        group: admin
+    
+    ###
+    ### Dashboard credentials
+    ###
+    basicauth_credentials:
+      - consumer: DASHBOARD
+        username: '$DASHBOARD_USERNAME'
+        password: '$DASHBOARD_PASSWORD'
+    
+    ###
+    ### API Routes
+    ###
+    services:
+      ## Open Auth routes
+      - name: auth-v1-open
+        url: http://{{ include "supabase.name" . }}-auth:9999/verify
+        routes:
+          - name: auth-v1-open
+            strip_path: true
+            paths:
+              - /auth/v1/verify
+        plugins:
+          - name: cors
+      - name: auth-v1-open-callback
+        url: http://{{ include "supabase.name" . }}-auth:9999/callback
+        routes:
+          - name: auth-v1-open-callback
+            strip_path: true
+            paths:
+              - /auth/v1/callback
+        plugins:
+          - name: cors
+      - name: auth-v1-open-authorize
+        url: http://{{ include "supabase.name" . }}-auth:9999/authorize
+        routes:
+          - name: auth-v1-open-authorize
+            strip_path: true
+            paths:
+              - /auth/v1/authorize
+        plugins:
+          - name: cors
+      - name: auth-v1-open-jwks
+        url: http://{{ include "supabase.name" . }}-auth:9999/.well-known/jwks.json
+        routes:
+          - name: auth-v1-open-jwks
+            strip_path: true
+            paths:
+              - /auth/v1/.well-known/jwks.json
+        plugins:
+          - name: cors
+    
+      - name: auth-v1-open-sso-acs
+        url: "http://{{ include "supabase.name" . }}-auth:9999/sso/saml/acs"
+        routes:
+          - name: auth-v1-open-sso-acs
+            strip_path: true
+            paths:
+            - /sso/saml/acs
+        plugins:
+          - name: cors
+    
+      - name: auth-v1-open-sso-metadata
+        url: "http://{{ include "supabase.name" . }}-auth:9999/sso/saml/metadata"
+        routes:
+          - name: auth-v1-open-sso-metadata
+            strip_path: true
+            paths:
+            - /sso/saml/metadata
+        plugins:
+          - name: cors
+    
+      ## Secure Auth routes
+      - name: auth-v1
+        url: http://{{ include "supabase.name" . }}-auth:9999/
+        routes:
+          - name: auth-v1-all
+            strip_path: true
+            paths:
+              - /auth/v1/
+        plugins:
+          - name: cors
+          - name: key-auth
+            config:
+              hide_credentials: false
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+              replace:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+          - name: acl
+            config:
+              hide_groups_header: true
+              allow:
+                - admin
+                - anon
+    
+      ## Secure PostgREST routes
+      - name: rest-v1
+        url: http://{{ include "supabase.name" . }}-rest:3000/
+        routes:
+          - name: rest-v1-all
+            strip_path: true
+            paths:
+              - /rest/v1/
+        plugins:
+          - name: cors
+          - name: key-auth
+            config:
+              hide_credentials: false
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+              replace:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+          - name: acl
+            config:
+              hide_groups_header: true
+              allow:
+                - admin
+                - anon
+    
+      ## Secure GraphQL routes
+      - name: graphql-v1
+        url: http://{{ include "supabase.name" . }}-rest:3000/rpc/graphql
+        routes:
+          - name: graphql-v1-all
+            strip_path: true
+            paths:
+              - /graphql/v1
+        plugins:
+          - name: cors
+          - name: key-auth
+            config:
+              hide_credentials: false
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - "Content-Profile: graphql_public"
+                  - "Authorization: $LUA_AUTH_EXPR"
+              replace:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+          - name: acl
+            config:
+              hide_groups_header: true
+              allow:
+                - admin
+                - anon
+    
+      ## Secure Realtime routes
+      - name: realtime-v1-ws
+        url: http://{{ include "supabase.name" . }}-realtime:4000/socket
+        protocol: ws
+        routes:
+          - name: realtime-v1-ws
+            strip_path: true
+            paths:
+              - /realtime/v1/
+        plugins:
+          - name: cors
+          - name: key-auth
+            config:
+              hide_credentials: false
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - "x-api-key:$LUA_RT_WS_EXPR"
+              replace:
+                querystring:
+                  - "apikey:$LUA_RT_WS_EXPR"
+          - name: acl
+            config:
+              hide_groups_header: true
+              allow:
+                - admin
+                - anon
+    
+      # Block access to /realtime/v1/api/openapi
+      - name: realtime-v1-rest-openapi
+        url: http://{{ include "supabase.name" . }}-realtime:4000/api/openapi
+        protocol: http
+        routes:
+          - name: realtime-v1-rest-openapi
+            strip_path: true
+            paths:
+              - /realtime/v1/api/openapi
+        plugins:
+          - name: request-termination
+            config:
+              status_code: 403
+              message: "Access is forbidden."
+    
+      # Block access to /realtime/v1/api/tenants
+      - name: realtime-v1-rest-tenants
+        url: http://{{ include "supabase.name" . }}-realtime:4000/api/tenants
+        protocol: http
+        routes:
+          - name: realtime-v1-rest-tenants
+            strip_path: true
+            paths:
+              - /realtime/v1/api/tenants
+        plugins:
+          - name: request-termination
+            config:
+              status_code: 403
+              message: "Access is forbidden."
+    
+      - name: realtime-v1-rest
+        url: http://{{ include "supabase.name" . }}-realtime:4000/api
+        protocol: http
+        routes:
+          - name: realtime-v1-rest
+            strip_path: true
+            paths:
+              - /realtime/v1/api
+        plugins:
+          - name: cors
+          - name: key-auth
+            config:
+              hide_credentials: false
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+              replace:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+          - name: acl
+            config:
+              hide_groups_header: true
+              allow:
+                - admin
+                - anon
+    
+      ## Storage API endpoint
+      - name: storage-v1
+        url: http://{{ include "supabase.name" . }}-storage:5000/
+        routes:
+          - name: storage-v1-all
+            strip_path: true
+            paths:
+              - /storage/v1/
+        plugins:
+          - name: cors
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+              replace:
+                headers:
+                  - "Authorization: $LUA_AUTH_EXPR"
+          - name: post-function
+            config:
+              access:
+                - |
+                  local auth = kong.request.get_header("authorization")
+                  if auth == nil or auth == "" or auth:find("^%s*$") then
+                    kong.service.request.clear_header("authorization")
+                  end
+    
+      ## Edge Functions routes
+      - name: functions-v1
+        url: http://{{ include "supabase.name" . }}-functions:9000/
+        read_timeout: 150000
+        routes:
+          - name: functions-v1-all
+            strip_path: true
+            paths:
+              - /functions/v1/
+        plugins:
+          - name: cors
+    
+      ## OAuth 2.0 Authorization Server Metadata (RFC 8414)
+      - name: well-known-oauth
+        url: http://{{ include "supabase.name" . }}-auth:9999/.well-known/oauth-authorization-server
+        routes:
+          - name: well-known-oauth
+            strip_path: true
+            paths:
+              - /.well-known/oauth-authorization-server
+        plugins:
+          - name: cors
+    
+      ## Secure Database routes
+      - name: meta
+        url: http://{{ include "supabase.name" . }}-meta:8080/
+        routes:
+          - name: meta-all
+            strip_path: true
+            paths:
+              - /pg/
+        plugins:
+          - name: key-auth
+            config:
+              hide_credentials: false
+          - name: acl
+            config:
+              hide_groups_header: true
+              allow:
+                - admin
+    
+      ## Block access to /api/mcp
+      - name: mcp-blocker
+        url: http://{{ include "supabase.name" . }}-studio:3000/api/mcp
+        routes:
+          - name: mcp-blocker-route
+            strip_path: true
+            paths:
+              - /api/mcp
+        plugins:
+          - name: request-termination
+            config:
+              status_code: 403
+              message: "Access is forbidden."
+    
+      ## MCP endpoint - local access
+      - name: mcp
+        url: http://{{ include "supabase.name" . }}-studio:3000/api/mcp
+        routes:
+          - name: mcp
+            strip_path: true
+            paths:
+              - /mcp
+        plugins:
+          - name: request-termination
+            config:
+              status_code: 403
+              message: "Access is forbidden."
+    
+      ## Protected Dashboard - catch all remaining routes
+      - name: dashboard
+        url: http://{{ include "supabase.name" . }}-studio:3000/
+        routes:
+          - name: dashboard-all
+            strip_path: true
+            paths:
+              - /
+        plugins:
+          - name: cors
+          - name: basic-auth
+            config:
+              hide_credentials: true
+
+  kong-entrypoint.sh: |
+    #!/bin/sh
+    # Custom entrypoint for Kong that builds Lua expressions for request-transformer
+    # and performs environment variable substitution in the declarative config.
+    
+    # Build Lua expressions for translating opaque API keys to asymmetric JWTs.
+    # When opaque keys are not configured (empty env vars), expressions fall through
+    # to legacy-only behavior - just passing apikey as-is.
+    #
+    # Full expression logic (when opaque keys are configured):
+    #   1. If Authorization header exists and is NOT an sb_ key -> pass through (user session JWT)
+    #   2. If apikey matches secret key -> set service_role asymmetric JWT internal "API key"
+    #   3. If apikey matches publishable key -> set anon asymmetric JWT internal "API key"
+    #   4. Fallback: pass apikey as-is (legacy HS256 JWT)
+    
+    if [ -n "$SUPABASE_SECRET_KEY" ] && [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+        # Opaque keys configured -> full translation expressions
+        export LUA_AUTH_EXPR="\$((headers.authorization ~= nil and headers.authorization:sub(1, 10) ~= 'Bearer sb_' and headers.authorization) or (headers.apikey == '$SUPABASE_SECRET_KEY' and 'Bearer $SERVICE_ROLE_KEY_ASYMMETRIC') or (headers.apikey == '$SUPABASE_PUBLISHABLE_KEY' and 'Bearer $ANON_KEY_ASYMMETRIC') or headers.apikey)"
+    
+        # Realtime WebSocket: reads from query_params.apikey (supabase-js sends apikey
+        # via query string), outputs to x-api-key header which Realtime checks first.
+        export LUA_RT_WS_EXPR="\$((query_params.apikey == '$SUPABASE_SECRET_KEY' and '$SERVICE_ROLE_KEY_ASYMMETRIC') or (query_params.apikey == '$SUPABASE_PUBLISHABLE_KEY' and '$ANON_KEY_ASYMMETRIC') or query_params.apikey)"
+    else
+        # Legacy API keys, not sb_ API keys -> pass apikey through unchanged
+        export LUA_AUTH_EXPR="\$((headers.authorization ~= nil and headers.authorization:sub(1, 10) ~= 'Bearer sb_' and headers.authorization) or headers.apikey)"
+        export LUA_RT_WS_EXPR="\$(query_params.apikey)"
+    fi
+    
+    # Substitute environment variables in the Kong declarative config.
+    # Uses awk instead of eval/echo to preserve YAML quoting (eval strips double
+    # quotes, breaking "Header: value" patterns that YAML parses as mappings).
+    awk '{
+      result = ""
+      rest = $0
+      while (match(rest, /\$[A-Za-z_][A-Za-z_0-9]*/)) {
+        varname = substr(rest, RSTART + 1, RLENGTH - 1)
+        if (varname in ENVIRON) {
+          result = result substr(rest, 1, RSTART - 1) ENVIRON[varname]
+        } else {
+          result = result substr(rest, 1, RSTART + RLENGTH - 1)
+        }
+        rest = substr(rest, RSTART + RLENGTH)
+      }
+      print result rest
+    }' /home/kong/temp.yml > "$KONG_DECLARATIVE_CONFIG"
+    
+    # Remove empty key-auth credentials (unconfigured opaque keys)
+    sed -i '/^[[:space:]]*- key:[[:space:]]*$/d' "$KONG_DECLARATIVE_CONFIG"
+    
+    exec /entrypoint.sh kong docker-start

@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.name" . }}-kong
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: kong
+          image: {{ .Values.kong.image }}
+          ports:
+            - containerPort: {{ .Values.kong.httpPort }}
+            - containerPort: {{ .Values.kong.httpsPort }}
+          command: ["/bin/sh", "/home/kong/kong-entrypoint.sh"]
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: "/usr/local/kong/kong.yml"
+            - name: KONG_DNS_ORDER
+              value: "LAST,A,CNAME"
+            - name: KONG_DNS_NOT_FOUND_TTL
+              value: "1"
+            - name: KONG_PLUGINS
+              value: "request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function"
+            - name: KONG_NGINX_PROXY_PROXY_BUFFER_SIZE
+              value: "160k"
+            - name: KONG_NGINX_PROXY_PROXY_BUFFERS
+              value: "64 160k"
+            - name: KONG_PROXY_ACCESS_LOG
+              value: "/dev/stdout combined"
+            - name: SUPABASE_PUBLISHABLE_KEY
+              value: ""
+            - name: SUPABASE_SECRET_KEY
+              value: ""
+            - name: ANON_KEY_ASYMMETRIC
+              value: ""
+            - name: SERVICE_ROLE_KEY_ASYMMETRIC
+              value: ""
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: anon-key
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: service-role-key
+            - name: DASHBOARD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: dashboard-username
+            - name: DASHBOARD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: dashboard-password
+          volumeMounts:
+            - name: kong-config
+              mountPath: /home/kong/temp.yml
+              subPath: kong.yml
+            - name: kong-config
+              mountPath: /home/kong/kong-entrypoint.sh
+              subPath: kong-entrypoint.sh
+          readinessProbe:
+            exec:
+              command: ["kong", "health"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: kong-config
+          configMap:
+            name: {{ include "supabase.name" . }}-kong
+            defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-kong
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.kong.httpPort }}
+      targetPort: {{ .Values.kong.httpPort }}
+    - name: https
+      port: {{ .Values.kong.httpsPort }}
+      targetPort: {{ .Values.kong.httpsPort }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-kong-external
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: {{ .Values.kong.httpPort }}
+      targetPort: {{ .Values.kong.httpPort }}
+      nodePort: {{ .Values.studio.nodePort }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}

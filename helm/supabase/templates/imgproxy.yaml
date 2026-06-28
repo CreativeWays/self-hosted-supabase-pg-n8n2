@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.name" . }}-imgproxy
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: imgproxy
+          image: {{ .Values.imgproxy.image }}
+          ports:
+            - containerPort: {{ .Values.imgproxy.port }}
+          env:
+            - name: IMGPROXY_BIND
+              value: ":{{ .Values.imgproxy.port }}"
+            - name: IMGPROXY_LOCAL_FILESYSTEM_ROOT
+              value: "/"
+            - name: IMGPROXY_USE_ETAG
+              value: "true"
+            - name: IMGPROXY_AUTO_WEBP
+              value: "{{ .Values.imgproxy.autoWebp }}"
+            - name: IMGPROXY_MAX_SRC_RESOLUTION
+              value: "16.8"
+          volumeMounts:
+            - name: storage-data
+              mountPath: /var/lib/storage
+          readinessProbe:
+            exec:
+              command: ["imgproxy", "health"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: storage-data
+          persistentVolumeClaim:
+            claimName: {{ include "supabase.name" . }}-storage-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-imgproxy
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.imgproxy.port }}
+      targetPort: {{ .Values.imgproxy.port }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}

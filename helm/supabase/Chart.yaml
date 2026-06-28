@@ -1,0 +1,6 @@
+apiVersion: v2
+name: supabase
+description: Self-hosted Supabase with PostgreSQL v17, pgvector, and all services
+type: application
+version: 1.0.0
+appVersion: "2026.06"

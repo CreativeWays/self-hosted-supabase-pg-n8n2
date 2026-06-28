@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.name" . }}-storage
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ include "supabase.name" . }}-db {{ .Values.db.port }}; do echo waiting for db; sleep 2; done']
+      containers:
+        - name: storage
+          image: {{ .Values.storage.image }}
+          ports:
+            - containerPort: {{ .Values.storage.port }}
+          env:
+            - name: POSTGREST_URL
+              value: "http://{{ include "supabase.name" . }}-rest:3000"
+            - name: STORAGE_PUBLIC_URL
+              value: "{{ .Values.urls.supabasePublicUrl }}"
+            - name: REQUEST_ALLOW_X_FORWARDED_PATH
+              value: "true"
+            - name: FILE_SIZE_LIMIT
+              value: "{{ .Values.storage.fileSizeLimit }}"
+            - name: STORAGE_BACKEND
+              value: "{{ .Values.storage.storageBackend }}"
+            - name: GLOBAL_S3_BUCKET
+              value: "{{ .Values.storage.globalS3Bucket }}"
+            - name: FILE_STORAGE_BACKEND_PATH
+              value: "/var/lib/storage"
+            - name: TENANT_ID
+              value: "{{ .Values.storage.tenantId }}"
+            - name: REGION
+              value: "{{ .Values.storage.region }}"
+            - name: ENABLE_IMAGE_TRANSFORMATION
+              value: "true"
+            - name: IMGPROXY_URL
+              value: "http://{{ include "supabase.name" . }}-imgproxy:5001"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: postgres-password
+            - name: DATABASE_URL
+              value: "postgres://supabase_storage_admin:$(POSTGRES_PASSWORD)@{{ include "supabase.name" . }}-db:{{ .Values.db.port }}/{{ .Values.db.database }}"
+            - name: ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: anon-key
+            - name: SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: service-role-key
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+            - name: S3_PROTOCOL_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: s3-protocol-access-key-id
+            - name: S3_PROTOCOL_ACCESS_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: s3-protocol-access-key-secret
+          volumeMounts:
+            - name: storage-data
+              mountPath: /var/lib/storage
+      volumes:
+        - name: storage-data
+          persistentVolumeClaim:
+            claimName: {{ include "supabase.name" . }}-storage-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-storage
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.storage.port }}
+      targetPort: {{ .Values.storage.port }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}

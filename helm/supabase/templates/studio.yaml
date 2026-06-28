@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.name" . }}-studio
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: studio
+          image: {{ .Values.studio.image }}
+          ports:
+            - containerPort: {{ .Values.studio.port }}
+          env:
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: STUDIO_PG_META_URL
+              value: "http://{{ include "supabase.name" . }}-meta:8080"
+            - name: POSTGRES_PORT
+              value: "{{ .Values.db.port }}"
+            - name: POSTGRES_HOST
+              value: "{{ include "supabase.name" . }}-db"
+            - name: POSTGRES_DB
+              value: "{{ .Values.db.database }}"
+            - name: POSTGRES_USER_READ_WRITE
+              value: "postgres"
+            - name: PGRST_DB_SCHEMAS
+              value: "{{ .Values.rest.dbSchemas }}"
+            - name: PGRST_DB_MAX_ROWS
+              value: "{{ .Values.rest.dbMaxRows }}"
+            - name: PGRST_DB_EXTRA_SEARCH_PATH
+              value: "{{ .Values.rest.dbExtraSearchPath }}"
+            - name: DEFAULT_ORGANIZATION_NAME
+              value: "{{ .Values.studio.defaultOrganization }}"
+            - name: DEFAULT_PROJECT_NAME
+              value: "{{ .Values.studio.defaultProject }}"
+            - name: OPENAI_API_KEY
+              value: "{{ .Values.studio.openaiApiKey }}"
+            - name: SUPABASE_URL
+              value: "http://{{ include "supabase.name" . }}-kong:{{ .Values.kong.httpPort }}"
+            - name: SUPABASE_PUBLIC_URL
+              value: "{{ .Values.urls.supabasePublicUrl }}"
+            - name: SUPABASE_PUBLISHABLE_KEY
+              value: ""
+            - name: SUPABASE_SECRET_KEY
+              value: ""
+            - name: ENABLED_FEATURES_LOGS_ALL
+              value: "false"
+            - name: SNIPPETS_MANAGEMENT_FOLDER
+              value: "/app/snippets"
+            - name: EDGE_FUNCTIONS_MANAGEMENT_FOLDER
+              value: "/app/edge-functions"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: postgres-password
+            - name: PG_META_CRYPTO_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: pg-meta-crypto-key
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: anon-key
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: service-role-key
+            - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-studio
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.studio.port }}
+      targetPort: {{ .Values.studio.port }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}

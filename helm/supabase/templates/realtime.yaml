@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.name" . }}-realtime
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ include "supabase.name" . }}-db {{ .Values.db.port }}; do echo waiting for db; sleep 2; done']
+      containers:
+        - name: realtime
+          image: {{ .Values.realtime.image }}
+          ports:
+            - containerPort: {{ .Values.realtime.port }}
+          env:
+            - name: PORT
+              value: "{{ .Values.realtime.port }}"
+            - name: DB_HOST
+              value: "{{ include "supabase.name" . }}-db"
+            - name: DB_PORT
+              value: "{{ .Values.db.port }}"
+            - name: DB_USER
+              value: "supabase_admin"
+            - name: DB_NAME
+              value: "{{ .Values.db.database }}"
+            - name: DB_AFTER_CONNECT_QUERY
+              value: "SET search_path TO _realtime"
+            - name: DB_ENC_KEY
+              value: "supabaserealtime"
+            - name: ERL_AFLAGS
+              value: "-proto_dist inet_tcp"
+            - name: DNS_NODES
+              value: "''"
+            - name: RLIMIT_NOFILE
+              value: "10000"
+            - name: APP_NAME
+              value: "realtime"
+            - name: SEED_SELF_HOST
+              value: "true"
+            - name: RUN_JANITOR
+              value: "true"
+            - name: DISABLE_HEALTHCHECK_LOGGING
+              value: "true"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: postgres-password
+            - name: API_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: secret-key-base
+            - name: METRICS_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-realtime
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.realtime.port }}
+      targetPort: {{ .Values.realtime.port }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}

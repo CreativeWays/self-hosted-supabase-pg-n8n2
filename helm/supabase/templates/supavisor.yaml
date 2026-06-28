@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.name" . }}-supavisor
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ include "supabase.name" . }}-db {{ .Values.db.port }}; do echo waiting for db; sleep 2; done']
+      containers:
+        - name: supavisor
+          image: {{ .Values.supavisor.image }}
+          ports:
+            - containerPort: {{ .Values.supavisor.port }}
+            - containerPort: {{ .Values.db.port }}
+            - containerPort: {{ .Values.supavisor.poolerProxyPortTransaction }}
+          command:
+            - "/bin/sh"
+            - "-c"
+            - "/app/bin/migrate && /app/bin/supavisor eval \"$(cat /etc/pooler/pooler.exs)\" && /app/bin/server"
+          env:
+            - name: PORT
+              value: "{{ .Values.supavisor.port }}"
+            - name: POSTGRES_PORT
+              value: "{{ .Values.db.port }}"
+            - name: POSTGRES_HOST
+              value: "{{ include "supabase.name" . }}-db"
+            - name: POSTGRES_DB
+              value: "{{ .Values.db.database }}"
+            - name: CLUSTER_POSTGRES
+              value: "true"
+            - name: REGION
+              value: "local"
+            - name: ERL_AFLAGS
+              value: "-proto_dist inet_tcp"
+            - name: POOLER_TENANT_ID
+              value: "{{ .Values.supavisor.tenantId }}"
+            - name: POOLER_DEFAULT_POOL_SIZE
+              value: "{{ .Values.supavisor.defaultPoolSize }}"
+            - name: POOLER_MAX_CLIENT_CONN
+              value: "{{ .Values.supavisor.maxClientConn }}"
+            - name: POOLER_POOL_MODE
+              value: "{{ .Values.supavisor.poolMode }}"
+            - name: DB_POOL_SIZE
+              value: "{{ .Values.supavisor.dbPoolSize }}"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: postgres-password
+            - name: DATABASE_URL
+              value: "ecto://supabase_admin:$(POSTGRES_PASSWORD)@{{ include "supabase.name" . }}-db:{{ .Values.db.port }}/_supabase"
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: secret-key-base
+            - name: VAULT_ENC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: vault-enc-key
+            - name: API_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+            - name: METRICS_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+          volumeMounts:
+            - name: pooler-config
+              mountPath: /etc/pooler/pooler.exs
+              subPath: pooler.exs
+      volumes:
+        - name: pooler-config
+          configMap:
+            name: {{ include "supabase.name" . }}-pooler
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.name" . }}-supavisor
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: {{ .Values.db.port }}
+      targetPort: {{ .Values.db.port }}
+    - name: transaction
+      port: {{ .Values.supavisor.poolerProxyPortTransaction }}
+      targetPort: {{ .Values.supavisor.poolerProxyPortTransaction }}
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}

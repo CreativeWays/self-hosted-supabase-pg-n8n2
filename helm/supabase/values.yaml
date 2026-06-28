@@ -1,0 +1,125 @@
+## Global settings
+global:
+  ## These should be populated by the secrets or configuration script
+  jwtSecret: ""
+  anonKey: ""
+  serviceRoleKey: ""
+  dashboardUsername: "supabase"
+  dashboardPassword: ""
+  postgresPassword: ""
+  secretKeyBase: ""
+  vaultEncKey: ""
+  pgMetaCryptoKey: ""
+  s3ProtocolAccessKeyId: ""
+  s3ProtocolAccessKeySecret: ""
+
+## PostgreSQL v17 (with pgvector)
+db:
+  image: supabase/postgres:17.6.1.136
+  port: 5432
+  database: postgres
+  nodePort: 5240
+  storage:
+    size: 20Gi
+
+## Studio (Dashboard)
+studio:
+  image: supabase/studio:2026.06.03-sha-0bca601
+  port: 3000
+  nodePort: 5241
+  defaultOrganization: "Default Organization"
+  defaultProject: "Default Project"
+  openaiApiKey: ""
+
+## Kong API Gateway
+kong:
+  image: kong/kong:3.9.1
+  httpPort: 8000
+  httpsPort: 8443
+
+## Auth (GoTrue)
+auth:
+  image: supabase/gotrue:v2.189.0
+  port: 9999
+  siteUrl: "http://localhost:3000"
+  additionalRedirectUrls: ""
+  jwtExpiry: 3600
+  disableSignup: false
+  enableEmailSignup: true
+  enableEmailAutoconfirm: false
+  enableAnonymousUsers: false
+  enablePhoneSignup: true
+  enablePhoneAutoconfirm: true
+  smtp:
+    adminEmail: "admin@example.com"
+    host: "supabase-mail"
+    port: 2500
+    user: "fake_mail_user"
+    pass: "fake_mail_password"
+    senderName: "fake_sender"
+  mailer:
+    urlpathsConfirmation: "/auth/v1/verify"
+    urlpathsInvite: "/auth/v1/verify"
+    urlpathsRecovery: "/auth/v1/verify"
+    urlpathsEmailChange: "/auth/v1/verify"
+
+## PostgREST
+rest:
+  image: postgrest/postgrest:v14.12
+  port: 3000
+  dbSchemas: "public,storage,graphql_public"
+  dbMaxRows: 1000
+  dbExtraSearchPath: "public"
+
+## Realtime
+realtime:
+  image: supabase/realtime:v2.102.3
+  port: 4000
+
+## Storage
+storage:
+  image: supabase/storage-api:v1.60.4
+  port: 5000
+  fileSizeLimit: 52428800
+  storageBackend: "file"
+  globalS3Bucket: "stub"
+  region: "stub"
+  tenantId: "stub"
+  persistence:
+    size: 10Gi
+
+## ImgProxy
+imgproxy:
+  image: darthsim/imgproxy:v3.30.1
+  port: 5001
+  autoWebp: true
+
+## Postgres Meta
+meta:
+  image: supabase/postgres-meta:v0.96.6
+  port: 8080
+
+## Edge Functions
+functions:
+  image: supabase/edge-runtime:v1.74.0
+  port: 9000
+  verifyJwt: false
+
+## Supavisor (Connection Pooler)
+supavisor:
+  image: supabase/supavisor:2.9.5
+  port: 4000
+  poolerProxyPortTransaction: 6543
+  defaultPoolSize: 20
+  maxClientConn: 100
+  tenantId: "your-tenant-id"
+  dbPoolSize: 5
+  poolMode: "transaction"
+
+## API URLs
+urls:
+  supabasePublicUrl: "http://localhost:8000"
+  apiExternalUrl: "http://localhost:8000"
+
+## Functions verify JWT
+functionsVerifyJwt: false
