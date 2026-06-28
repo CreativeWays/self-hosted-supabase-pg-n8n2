@@ -321,7 +321,7 @@ spec:
             # The official docker-compose gets this from the image's baked-in
             # postgresql.conf; in K8s we pass it explicitly via args.
             - -c
-            - shared_preload_libraries=pg_net,pg_stat_statements,pgaudit
+            - shared_preload_libraries=pg_net,pg_stat_statements,pgaudit,pg_tle,pgsodium
           env:
             # Socket path the Supabase image uses internally
             - name: POSTGRES_HOST
