@@ -303,7 +303,11 @@ spec:
             - -c
             - log_min_messages=fatal
           env:
+            # Socket path the Supabase image uses internally
             - name: POSTGRES_HOST
+              value: /var/run/postgresql
+            # PGHOST is what migrate.sh actually reads for libpq connections
+            - name: PGHOST
               value: /var/run/postgresql
             - name: PGPORT
               value: "5432"
@@ -313,8 +317,10 @@ spec:
               value: "postgres"
             - name: POSTGRES_DB
               value: "postgres"
-            - name: POSTGRES_USER
-              value: "postgres"
+            # DO NOT set POSTGRES_USER — the supabase/postgres image defaults
+            # to 'supabase_admin' as the bootstrap superuser. Overriding it to
+            # 'postgres' prevents migrate.sh from running, so extensions and
+            # Supabase roles are never installed.
             - name: JWT_EXP
               value: "3600"
             - name: PGPASSWORD
@@ -337,32 +343,37 @@ spec:
               mountPath: /var/lib/postgresql/data
             - name: db-config
               mountPath: /etc/postgresql-custom
+            # All custom SQL goes into init-scripts/ — the image's own
+            # internal Supabase migrations already live in migrations/, and
+            # mounting files there risks ordering conflicts with them.
             - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/97-_supabase.sql
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/97-_supabase.sql
               subPath: _supabase.sql
-            - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/99-realtime.sql
-              subPath: realtime.sql
-            - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/99-logs.sql
-              subPath: logs.sql
-            - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/99-pooler.sql
-              subPath: pooler.sql
             - name: init-scripts
               mountPath: /docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
               subPath: webhooks.sql
             - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
-              subPath: roles.sql
-            - name: init-scripts
               mountPath: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
               subPath: jwt.sql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-logs.sql
+              subPath: logs.sql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-pooler.sql
+              subPath: pooler.sql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-realtime.sql
+              subPath: realtime.sql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
+              subPath: roles.sql
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres", "-h", "localhost"]
-            initialDelaySeconds: 5
+              # Use supabase_admin — that is the bootstrap superuser in this image
+              command: ["pg_isready", "-U", "supabase_admin", "-h", "/var/run/postgresql"]
+            initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 6
       volumes:
         - name: db-config
           emptyDir: {}
