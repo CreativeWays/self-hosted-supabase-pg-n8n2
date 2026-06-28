@@ -285,12 +285,24 @@ spec:
       labels:
         app.kubernetes.io/name: supabase-db
     spec:
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
       containers:
         - name: db
           image: supabase/postgres:17.6.1.136
           ports:
             - containerPort: 5432
-          command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+          # Do NOT override command — let docker-entrypoint.sh run so it can
+          # initialise the data directory and drop privileges to the postgres
+          # user before exec-ing the server. Pass extra postgres flags as args.
+          args:
+            - postgres
+            - -c
+            - config_file=/etc/postgresql/postgresql.conf
+            - -c
+            - log_min_messages=fatal
           env:
             - name: POSTGRES_HOST
               value: /var/run/postgresql
@@ -301,6 +313,8 @@ spec:
             - name: PGDATABASE
               value: "postgres"
             - name: POSTGRES_DB
+              value: "postgres"
+            - name: POSTGRES_USER
               value: "postgres"
             - name: JWT_EXP
               value: "3600"
