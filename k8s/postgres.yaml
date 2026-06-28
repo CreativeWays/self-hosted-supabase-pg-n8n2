@@ -285,10 +285,9 @@ spec:
       labels:
         app.kubernetes.io/name: supabase-db
     spec:
-      securityContext:
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
+      # No pod-level securityContext — the supabase/postgres entrypoint starts
+      # as root to chown/chmod data dirs, then drops to the 'postgres' user
+      # internally via gosu before exec-ing the server.
       containers:
         - name: db
           image: supabase/postgres:17.6.1.136
