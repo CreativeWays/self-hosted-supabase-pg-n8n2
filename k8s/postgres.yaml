@@ -19,6 +19,19 @@ metadata:
   labels:
     app.kubernetes.io/name: supabase-db
 data:
+  missing-extensions.sql: |
+    -- Extensions that migrate.sh does not install for supabase/postgres:17.6.1.136.
+    -- pgjwt   : CRITICAL — PostgREST verifies JWTs inside the DB via this.
+    -- pgsodium : CRITICAL — Vault encryption + Auth key derivation.
+    -- pg_graphql: GraphQL API layer.
+    -- pgaudit  : Audit logging (preloaded via shared_preload_libraries).
+    -- pg_tle   : Trusted language extensions.
+    CREATE EXTENSION IF NOT EXISTS "pgsodium";
+    CREATE EXTENSION IF NOT EXISTS "pgjwt"         WITH SCHEMA extensions;
+    CREATE EXTENSION IF NOT EXISTS "pg_graphql"    WITH SCHEMA graphql;
+    CREATE EXTENSION IF NOT EXISTS "pgaudit";
+    CREATE EXTENSION IF NOT EXISTS "pg_tle";
+
   _supabase.sql: |
     \set pguser `echo "$POSTGRES_USER"`
     
@@ -353,6 +366,10 @@ spec:
             # internal Supabase migrations already live in migrations/, and
             # mounting files there risks ordering conflicts with them.
             # Extensions are installed by migrate.sh baked into the image.
+            # missing-extensions.sql covers what migrate.sh skips in 17.6.1.136.
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/96-missing-extensions.sql
+              subPath: missing-extensions.sql
             - name: init-scripts
               mountPath: /docker-entrypoint-initdb.d/init-scripts/97-_supabase.sql
               subPath: _supabase.sql
