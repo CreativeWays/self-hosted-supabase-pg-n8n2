@@ -296,10 +296,10 @@ spec:
           # Do NOT override command — let docker-entrypoint.sh run so it can
           # initialise the data directory and drop privileges to the postgres
           # user before exec-ing the server. Pass extra postgres flags as args.
+          # NOTE: do NOT pass config_file here — supabase/postgres manages its
+          # own postgresql.conf path internally via its custom entrypoint.
           args:
             - postgres
-            - -c
-            - config_file=/etc/postgresql/postgresql.conf
             - -c
             - log_min_messages=fatal
           env:
