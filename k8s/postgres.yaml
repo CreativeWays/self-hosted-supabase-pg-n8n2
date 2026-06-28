@@ -294,14 +294,20 @@ spec:
           ports:
             - containerPort: 5432
           # Do NOT override command — let docker-entrypoint.sh run so it can
-          # initialise the data directory and drop privileges to the postgres
+          # initialise the data directory and drop privileges to the supabase_admin
           # user before exec-ing the server. Pass extra postgres flags as args.
           # NOTE: do NOT pass config_file here — supabase/postgres manages its
           # own postgresql.conf path internally via its custom entrypoint.
+          # NOTE: log_min_messages=fatal is intentionally NOT set — it was
+          # suppressing migrate.sh errors and masking extension install failures.
           args:
             - postgres
+            # These extensions are background workers or need shared memory hooks —
+            # they MUST be in shared_preload_libraries before the server starts.
+            # The official docker-compose gets this from the image's baked-in
+            # postgresql.conf; in K8s we pass it explicitly via args.
             - -c
-            - log_min_messages=fatal
+            - shared_preload_libraries=pg_net,pg_stat_statements,pgaudit
           env:
             # Socket path the Supabase image uses internally
             - name: POSTGRES_HOST
@@ -346,6 +352,7 @@ spec:
             # All custom SQL goes into init-scripts/ — the image's own
             # internal Supabase migrations already live in migrations/, and
             # mounting files there risks ordering conflicts with them.
+            # Extensions are installed by migrate.sh baked into the image.
             - name: init-scripts
               mountPath: /docker-entrypoint-initdb.d/init-scripts/97-_supabase.sql
               subPath: _supabase.sql
