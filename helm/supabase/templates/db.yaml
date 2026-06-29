@@ -24,6 +24,8 @@ spec:
           args:
             - postgres
             - -c
+            - listen_addresses=*
+            - -c
             - shared_preload_libraries=pg_net,pg_stat_statements,pgaudit,pg_tle,pgsodium
           env:
             - name: POSTGRES_HOST
