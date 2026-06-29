@@ -4,16 +4,16 @@ metadata:
   name: {{ include "supabase.name" . }}-kong
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "kong" "root" .) | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "supabase.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.selectorLabels" (dict "name" "kong" "root" .) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "supabase.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.selectorLabels" (dict "name" "kong" "root" .) | nindent 8 }}
     spec:
       containers:
         - name: kong
@@ -101,7 +101,7 @@ spec:
       port: {{ .Values.kong.httpsPort }}
       targetPort: {{ .Values.kong.httpsPort }}
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "kong" "root" .) | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -117,4 +117,4 @@ spec:
       targetPort: {{ .Values.kong.httpPort }}
       nodePort: {{ .Values.studio.nodePort }}
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "kong" "root" .) | nindent 4 }}

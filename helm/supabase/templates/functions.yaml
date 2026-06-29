@@ -4,16 +4,16 @@ metadata:
   name: {{ include "supabase.name" . }}-functions
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "functions" "root" .) | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "supabase.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.selectorLabels" (dict "name" "functions" "root" .) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "supabase.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.selectorLabels" (dict "name" "functions" "root" .) | nindent 8 }}
     spec:
       containers:
         - name: functions
@@ -82,4 +82,4 @@ spec:
     - port: {{ .Values.functions.port }}
       targetPort: {{ .Values.functions.port }}
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "functions" "root" .) | nindent 4 }}

@@ -4,16 +4,16 @@ metadata:
   name: {{ include "supabase.name" . }}-rest
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "rest" "root" .) | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "supabase.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.selectorLabels" (dict "name" "rest" "root" .) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "supabase.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.selectorLabels" (dict "name" "rest" "root" .) | nindent 8 }}
     spec:
       initContainers:
         - name: wait-for-db
@@ -72,4 +72,4 @@ spec:
     - port: {{ .Values.rest.port }}
       targetPort: {{ .Values.rest.port }}
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "rest" "root" .) | nindent 4 }}

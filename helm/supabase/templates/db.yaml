@@ -4,17 +4,17 @@ metadata:
   name: {{ include "supabase.name" . }}-db
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "db" "root" .) | nindent 4 }}
 spec:
   serviceName: {{ include "supabase.name" . }}-db
   replicas: 1
   selector:
     matchLabels:
-      {{- include "supabase.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.selectorLabels" (dict "name" "db" "root" .) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "supabase.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.selectorLabels" (dict "name" "db" "root" .) | nindent 8 }}
     spec:
       containers:
         - name: db
@@ -116,7 +116,7 @@ spec:
     - port: {{ .Values.db.port }}
       targetPort: {{ .Values.db.port }}
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "db" "root" .) | nindent 4 }}
 ---
 apiVersion: v1
 kind: Service
@@ -131,4 +131,4 @@ spec:
       targetPort: {{ .Values.db.port }}
       nodePort: {{ .Values.db.nodePort }}
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.selectorLabels" (dict "name" "db" "root" .) | nindent 4 }}

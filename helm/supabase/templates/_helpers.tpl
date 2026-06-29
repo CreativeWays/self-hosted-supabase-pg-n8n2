@@ -25,6 +25,6 @@ app.kubernetes.io/part-of: supabase
 Selector labels for a specific component
 */}}
 {{- define "supabase.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "supabase.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/name: {{ include "supabase.name" .root }}-{{ .name }}
+app.kubernetes.io/instance: {{ .root.Release.Name }}
 {{- end }}
