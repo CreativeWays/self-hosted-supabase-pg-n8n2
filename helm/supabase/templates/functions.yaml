@@ -20,7 +20,7 @@ spec:
           image: {{ .Values.functions.image }}
           ports:
             - containerPort: {{ .Values.functions.port }}
-          command: ["start", "--main-service", "/home/deno/functions/main"]
+          args: ["start", "--main-service", "/home/deno/functions/main"]
           env:
             - name: SUPABASE_URL
               value: "http://{{ include "supabase.name" . }}-kong:{{ .Values.kong.httpPort }}"
