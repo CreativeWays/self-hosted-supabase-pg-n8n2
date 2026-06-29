@@ -21,9 +21,14 @@ spec:
           image: {{ .Values.db.image }}
           ports:
             - containerPort: {{ .Values.db.port }}
-          command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+          args:
+            - postgres
+            - -c
+            - shared_preload_libraries=pg_net,pg_stat_statements,pgaudit,pg_tle,pgsodium
           env:
             - name: POSTGRES_HOST
+              value: /var/run/postgresql
+            - name: PGHOST
               value: /var/run/postgresql
             - name: PGPORT
               value: "{{ .Values.db.port }}"
@@ -56,16 +61,19 @@ spec:
             - name: db-config
               mountPath: /etc/postgresql-custom
             - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/97-_supabase.sql
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/96-missing-extensions.sql
+              subPath: missing-extensions.sql
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/97-_supabase.sql
               subPath: _supabase.sql
             - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/99-realtime.sql
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-realtime.sql
               subPath: realtime.sql
             - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/99-logs.sql
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-logs.sql
               subPath: logs.sql
             - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d/migrations/99-pooler.sql
+              mountPath: /docker-entrypoint-initdb.d/init-scripts/99-pooler.sql
               subPath: pooler.sql
             - name: init-scripts
               mountPath: /docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
@@ -78,7 +86,7 @@ spec:
               subPath: jwt.sql
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres", "-h", "localhost"]
+              command: ["pg_isready", "-U", "supabase_admin", "-h", "/var/run/postgresql"]
             initialDelaySeconds: 5
             periodSeconds: 10
       volumes:

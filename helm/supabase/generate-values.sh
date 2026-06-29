@@ -50,8 +50,8 @@ pg_meta_crypto_key=$(gen_base64 24)
 s3_protocol_access_key_id=$(gen_hex 16)
 s3_protocol_access_key_secret=$(gen_hex 32)
 
-postgres_password=$(gen_hex 16)
-dashboard_password=$(gen_hex 16)
+postgres_password=nnn000Nn
+dashboard_password=nnn000Nn
 
 cat <<EOF > custom-values.yaml
 global:
