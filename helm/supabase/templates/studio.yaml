@@ -84,6 +84,17 @@ spec:
                 secretKeyRef:
                   name: {{ include "supabase.name" . }}-secrets
                   key: jwt-secret
+          volumeMounts:
+            - name: functions-scripts
+              mountPath: /app/edge-functions/main/index.ts
+              subPath: main-index.ts
+            - name: functions-scripts
+              mountPath: /app/edge-functions/hello/index.ts
+              subPath: hello-index.ts
+      volumes:
+        - name: functions-scripts
+          configMap:
+            name: {{ include "supabase.name" . }}-functions
 ---
 apiVersion: v1
 kind: Service
