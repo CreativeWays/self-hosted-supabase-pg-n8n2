@@ -18,6 +18,7 @@ data:
     CREATE EXTENSION IF NOT EXISTS "pg_graphql"    WITH SCHEMA graphql;
     CREATE EXTENSION IF NOT EXISTS "pgaudit";
     CREATE EXTENSION IF NOT EXISTS "pg_tle";
+    CREATE EXTENSION IF NOT EXISTS "vector"        WITH SCHEMA extensions;
   _supabase.sql: |
     \set pguser `echo "$POSTGRES_USER"`
     

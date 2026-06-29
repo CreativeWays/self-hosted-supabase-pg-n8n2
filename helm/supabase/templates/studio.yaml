@@ -50,9 +50,15 @@ spec:
             - name: SUPABASE_PUBLIC_URL
               value: "{{ .Values.urls.supabasePublicUrl }}"
             - name: SUPABASE_PUBLISHABLE_KEY
-              value: ""
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: anon-key
             - name: SUPABASE_SECRET_KEY
-              value: ""
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: service-role-key
             - name: ENABLED_FEATURES_LOGS_ALL
               value: "false"
             - name: SNIPPETS_MANAGEMENT_FOLDER
@@ -80,6 +86,16 @@ spec:
                   name: {{ include "supabase.name" . }}-secrets
                   key: service-role-key
             - name: AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+            - name: SUPABASE_AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "supabase.name" . }}-secrets
+                  key: jwt-secret
+            - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "supabase.name" . }}-secrets
