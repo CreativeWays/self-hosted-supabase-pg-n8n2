@@ -2,7 +2,10 @@
 # Mode: Standalone
 # Using existing Supabase PostgreSQL database
 
-# Scaling down Redis / Webhook Processors since it's standalone mode
+# Scaling down Redis and Queue mode since it's standalone mode
+queueMode:
+  enabled: false
+
 redis:
   enabled: false
 
