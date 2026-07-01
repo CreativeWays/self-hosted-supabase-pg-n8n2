@@ -1,0 +1,37 @@
+# n8n-values.yaml
+# Mode: Standalone
+# Using existing Supabase PostgreSQL database
+
+# Scaling down Redis / Webhook Processors since it's standalone mode
+redis:
+  enabled: false
+
+# Configure standalone database (using Supabase Postgres)
+database:
+  type: postgresdb
+  useExternal: true
+  host: "supabase-db.default.svc.cluster.local" # Adjust namespace if Supabase is not in default
+  port: 5432
+  database: "postgres"
+  schema: "public"
+  user: "postgres"
+  passwordSecret:
+    name: "supabase-secrets" # Assumes supabase creates this secret with its keys
+    key: "postgres-password"
+
+# Set persistence using local-path StorageClass
+persistence:
+  enabled: true
+  storageClassName: "local-path"
+  size: "5Gi"
+  accessModes: ["ReadWriteOnce"]
+
+# Networking configuration for NodePort
+service:
+  type: NodePort
+  port: 5678
+  nodePort: 5242
+
+# Referencing existing Secret for n8n configuration
+secretRefs:
+  existingSecret: "n8n-secrets"
