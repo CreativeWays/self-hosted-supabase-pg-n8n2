@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: {{ .Values.traefik.entrypointName }}
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Matches n8n.fullnameOverride ("n8n") + "-main" as used by
+                # the official chart's main Deployment/Service naming.
+                # Verify with: kubectl get svc -n <namespace>
+                name: {{ .Values.n8n.fullnameOverride }}-main
+                port:
+                  number: {{ .Values.n8n.service.port }}

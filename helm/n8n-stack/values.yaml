@@ -1,0 +1,70 @@
+# -----------------------------------------------------------------------
+# Settings for THIS wrapper chart (Traefik entrypoint + Ingress + Secret)
+# -----------------------------------------------------------------------
+traefik:
+  # Name of the custom Traefik entrypoint created via HelmChartConfig.
+  entrypointName: n8n
+  # Port n8n will be reached on from outside the cluster.
+  port: 5242
+
+# These become the N8N_HOST / N8N_PORT / N8N_PROTOCOL values baked into
+# the generated Secret. Keep protocol as http unless you also terminate
+# TLS at Traefik.
+n8nHost: "192.168.0.203"
+n8nPort: "5678"
+n8nProtocol: "http"
+
+# Name of the Secret this chart generates and n8n reads via secretRefs.
+secretName: n8n-secrets
+
+# -----------------------------------------------------------------------
+# Values passed straight through to the official n8n chart dependency
+# (alias "n8n" from Chart.yaml). See:
+# helm show values oci://ghcr.io/n8n-io/n8n-helm-chart/n8n --version 1.0.0
+# for the full list of what's configurable here.
+# -----------------------------------------------------------------------
+n8n:
+  fullnameOverride: "n8n"   # makes the main service predictably named "n8n-main"
+
+  queueMode:
+    enabled: false
+
+  redis:
+    enabled: false
+
+  ingress:
+    enabled: false   # exposure is handled by this wrapper chart's own Ingress
+
+  # Configure standalone database (using Supabase Postgres)
+  database:
+    type: postgresdb
+    useExternal: true
+    host: "supabase-db.supabase.svc.cluster.local"
+    port: 5432
+    database: "postgres"
+    schema: "public"
+    user: "postgres"
+    passwordSecret:
+      name: "supabase-secrets" # Assumes supabase creates this secret with its keys
+      key: "postgres-password"
+
+  # Set persistence using local-path StorageClass
+  persistence:
+    enabled: true
+    storageClassName: "local-path"
+    size: "5Gi"
+    accessModes: ["ReadWriteOnce"]
+
+  # Networking configuration for NodePort
+  service:
+    type: ClusterIP
+    port: 5678
+
+  # Referencing existing Secret for n8n configuration
+  secretRefs:
+    existingSecret: "n8n-secrets"
+
+  main:
+    extraEnv:
+      - name: N8N_SECURE_COOKIE
+        value: "false"

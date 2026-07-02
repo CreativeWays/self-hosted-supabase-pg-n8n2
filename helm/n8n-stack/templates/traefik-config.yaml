@@ -1,0 +1,19 @@
+{{/*
+  This patches k3s's built-in Traefik deployment to listen on an extra
+  entrypoint. It MUST live in kube-system regardless of the release
+  namespace, since that's where k3s's Traefik HelmChart is installed.
+  Helm tracks this resource by its own identity, so it's still cleaned up
+  correctly on `helm uninstall`.
+*/}}
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    ports:
+      {{ .Values.traefik.entrypointName }}:
+        port: {{ .Values.traefik.port }}
+        exposedPort: {{ .Values.traefik.port }}
+        protocol: TCP
