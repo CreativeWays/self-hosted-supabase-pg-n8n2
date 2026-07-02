@@ -64,7 +64,7 @@ n8n:
   secretRefs:
     existingSecret: "n8n-secrets"
 
-  main:
+  config:
     extraEnv:
       - name: N8N_SECURE_COOKIE
         value: "false"
