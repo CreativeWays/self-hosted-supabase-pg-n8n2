@@ -13,7 +13,7 @@ redis:
 database:
   type: postgresdb
   useExternal: true
-  host: "supabase-db.default.svc.cluster.local" # Adjust namespace if Supabase is not in default
+  host: "supabase-db.supabase.svc.cluster.local"
   port: 5432
   database: "postgres"
   schema: "public"
