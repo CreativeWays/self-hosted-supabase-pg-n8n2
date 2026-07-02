@@ -17,3 +17,5 @@ spec:
         port: {{ .Values.traefik.port }}
         exposedPort: {{ .Values.traefik.port }}
         protocol: TCP
+        expose:
+          default: true
